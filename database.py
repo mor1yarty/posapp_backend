@@ -3,10 +3,16 @@ from sqlalchemy import create_engine, Column, Integer, String, TIMESTAMP, CHAR
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.sql import func
-from dotenv import load_dotenv
 import pymysql
 
-load_dotenv()
+# 開発環境でのみ.envファイルを読み込み
+if os.getenv("ENVIRONMENT") != "production":
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        # dotenvが利用できない場合はスキップ
+        pass
 
 # MySQL接続設定
 DB_HOST = os.getenv("DB_HOST", "localhost")

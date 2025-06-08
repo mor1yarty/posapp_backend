@@ -98,7 +98,7 @@ pip install -r requirements.txt
 
 ### 環境変数設定
 
-`.env.example`をコピーして`.env`ファイルを作成し、環境に合わせて設定：
+**開発環境**: `.env.example`をコピーして`.env`ファイルを作成し、環境に合わせて設定：
 
 ```bash
 cp .env.example .env
@@ -107,6 +107,15 @@ cp .env.example .env
 ```.env
 DATABASE_URL=mysql+pymysql://username:password@localhost:3306/pos_app
 DEBUG=True
+```
+
+**本番環境**: 環境変数を直接設定（`.env`ファイルは使用しません）：
+```bash
+export ENVIRONMENT=production
+export DB_HOST=your-production-host
+export DB_USER=your-username
+export DB_PASSWORD=your-password
+export DB_NAME=your-database
 ```
 
 ### データベースセットアップ
@@ -234,6 +243,7 @@ curl -X POST "http://localhost:8000/calculate-tax" \
 - **エラーハンドリング**: 適切なHTTPステータスコードとエラーメッセージ
 - **トランザクション管理**: データベース操作の一貫性保証
 - **ログ出力**: サーバーアクティビティの記録
+- **環境別設定**: 開発環境と本番環境の自動判別
 
 ## Docker対応
 
@@ -275,10 +285,20 @@ curl -X POST http://localhost:8000/calculate-tax \
 詳細なデプロイ手順については、プロジェクトルートの `azure-deployment.md` を参照してください。
 
 ### 環境変数（本番）
-```
-DATABASE_URL=mysql+pymysql://username:password@server:3306/database
+```bash
+# 必須環境変数
+ENVIRONMENT=production
+DB_HOST=your-production-host.mysql.database.azure.com
+DB_USER=your-username
+DB_PASSWORD=your-password
+DB_NAME=your-database
+DB_PORT=3306
+
+# オプション
 DEBUG=False
 ```
+
+**重要**: 本番環境では`ENVIRONMENT=production`を設定することで、`.env`ファイルの読み込みをスキップし、環境変数を直接使用します。
 
 ### SSL接続設定
 本番環境（Azure MySQL）では自動的にSSL接続が有効になります：
@@ -328,7 +348,12 @@ DEBUG=False
 4. **SSL接続エラー（本番環境）**
    - DigiCertGlobalRootCA.crt.pemファイルが存在することを確認
    - Azure MySQLのSSL設定が有効になっていることを確認
-   - DATABASE_URLにSSLパラメータが含まれていることを確認
+   - ENVIRONMENT=productionが設定されていることを確認
+
+5. **環境変数エラー**
+   - 開発環境: `.env`ファイルが正しく設定されているか確認
+   - 本番環境: 必要な環境変数がすべて設定されているか確認
+   - `ENVIRONMENT=production`が本番環境で設定されているか確認
 
 ## 開発ガイドライン
 
