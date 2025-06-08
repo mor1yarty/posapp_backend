@@ -1,0 +1,282 @@
+# POSアプリケーション - バックエンド (FastAPI)
+
+モバイルPOSシステムのバックエンドAPI実装です。FastAPIを使用した高性能なPython WebAPIです。
+
+## 技術スタック
+
+- **フレームワーク**: FastAPI 0.104.1
+- **ASGI サーバー**: Uvicorn 0.24.0
+- **ORM**: SQLAlchemy 2.0.23
+- **データベースドライバー**: PyMySQL 1.1.0
+- **データ検証**: Pydantic 2.5.0
+- **データベース**: MySQL 8.0
+
+## 機能
+
+### API エンドポイント
+
+#### 商品マスタ検索
+- **エンドポイント**: `GET /products/{code}`
+- **機能**: JANコードによる商品情報検索
+- **レスポンス**: 商品ID、商品名、品名、色、品番、価格
+
+#### 購入処理
+- **エンドポイント**: `POST /purchase`
+- **機能**: 購入データの保存
+- **処理**: 取引データ(TRD)と取引明細(TRD_DTL)の作成
+
+#### ヘルスチェック
+- **エンドポイント**: `GET /health`
+- **機能**: サーバー状態の確認
+
+## データベース設計
+
+### PRD_MASTER（商品マスタ）
+- `PRD_ID`: INTEGER (主キー)
+- `CODE`: CHAR(13) (JANコード、ユニーク)
+- `PRODUCT_NAME`: VARCHAR(50) (品名)
+- `COLOR`: VARCHAR(30) (色)
+- `ITEM_CODE`: VARCHAR(20) (品番)
+- `NAME`: VARCHAR(100) (商品名)
+- `PRICE`: INTEGER (価格)
+
+### TRD（取引）
+- `TRD_ID`: INTEGER (主キー)
+- `DATETIME`: TIMESTAMP (取引日時)
+- `EMP_CD`: CHAR(10) (従業員コード)
+- `STORE_CD`: CHAR(5) (店舗コード)
+- `POS_NO`: CHAR(3) (POS番号)
+- `TOTAL_AMT`: INTEGER (合計金額)
+
+### TRD_DTL（取引明細）
+- `TRD_ID`: INTEGER (主キー、外部キー)
+- `DTL_ID`: INTEGER (主キー)
+- `PRD_ID`: INTEGER (外部キー)
+- `PRD_CODE`: CHAR(13) (商品コード)
+- `PRD_NAME`: VARCHAR(100) (商品名)
+- `PRD_PRICE`: INTEGER (商品価格)
+
+## ディレクトリ構成
+
+```
+pos-app-backend/
+├── main.py                     # メインアプリケーション
+├── database.py                 # データベース設定とORMモデル
+├── models.py                   # Pydanticモデル定義
+├── requirements.txt            # Python依存関係
+├── .env.example               # 環境変数テンプレート
+├── Dockerfile                 # Dockerコンテナ設定
+├── server.log                 # サーバーログ
+└── README.md
+```
+
+## 環境設定
+
+### 前提条件
+- Python 3.11以上
+- MySQL 8.0以上
+
+### インストール
+
+```bash
+# 仮想環境の作成
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate    # Windows
+
+# 依存関係のインストール
+pip install -r requirements.txt
+```
+
+### 環境変数設定
+
+`.env.example`をコピーして`.env`ファイルを作成し、環境に合わせて設定：
+
+```bash
+cp .env.example .env
+```
+
+```.env
+DATABASE_URL=mysql+pymysql://username:password@localhost:3306/pos_app
+DEBUG=True
+```
+
+### データベースセットアップ
+
+```bash
+# MySQLデータベースの作成
+mysql -u root -p
+CREATE DATABASE pos_app;
+
+# スキーマとサンプルデータの投入
+SOURCE ../database/schema.sql;
+SOURCE ../database/sample_data.sql;
+```
+
+## 開発
+
+### 開発サーバー起動
+
+```bash
+# 開発モードでの起動
+uvicorn main:app --reload --port 8000
+
+# 本番モードでの起動
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+サーバーは http://localhost:8000 で利用可能になります。
+
+### API ドキュメント
+
+FastAPIの自動生成ドキュメントが利用できます：
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+## APIの使用例
+
+### 商品検索
+
+```bash
+# 商品検索API
+curl -X GET "http://localhost:8000/products/4901681513017"
+
+# レスポンス例
+{
+  "prd_id": 1,
+  "code": "4901681513017",
+  "product_name": "サラサクリップ",
+  "color": "ブラック",
+  "item_code": "JJ15-BK",
+  "name": "サラサクリップ ブラック",
+  "price": 130
+}
+```
+
+### 購入処理
+
+```bash
+# 購入処理API
+curl -X POST "http://localhost:8000/purchase" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {
+        "prd_id": 1,
+        "prd_code": "4901681513017",
+        "prd_name": "サラサクリップ ブラック",
+        "prd_price": 130,
+        "quantity": 2
+      }
+    ]
+  }'
+
+# レスポンス例
+{
+  "transaction_id": 1,
+  "total_amount": 260,
+  "message": "購入が完了しました"
+}
+```
+
+## アーキテクチャ
+
+### レイヤー構造
+1. **API層** (`main.py`): FastAPIエンドポイント定義
+2. **データモデル層** (`models.py`): Pydantic入出力モデル
+3. **データアクセス層** (`database.py`): SQLAlchemy ORM
+
+### 主要機能
+- **CORS対応**: フロントエンドからのクロスオリジンリクエスト許可
+- **エラーハンドリング**: 適切なHTTPステータスコードとエラーメッセージ
+- **トランザクション管理**: データベース操作の一貫性保証
+- **ログ出力**: サーバーアクティビティの記録
+
+## Docker対応
+
+```bash
+# イメージのビルド
+docker build -t pos-backend .
+
+# コンテナの実行
+docker run -p 8000:8000 pos-backend
+```
+
+## テスト
+
+### 手動テスト
+
+```bash
+# ヘルスチェック
+curl http://localhost:8000/health
+
+# 商品検索テスト
+curl http://localhost:8000/products/4901681513017
+
+# 購入処理テスト
+curl -X POST http://localhost:8000/purchase \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"prd_id":1,"prd_code":"4901681513017","prd_name":"サラサクリップ ブラック","prd_price":130,"quantity":1}]}'
+```
+
+## デプロイ
+
+### Azure Web App
+このアプリケーションはAzure Web App (Python)でのデプロイを前提として設計されています。
+
+詳細なデプロイ手順については、プロジェクトルートの `azure-deployment.md` を参照してください。
+
+### 環境変数（本番）
+```
+DATABASE_URL=mysql+pymysql://username:password@server:3306/database
+DEBUG=False
+```
+
+## パフォーマンス最適化
+
+- **データベース接続プール**: SQLAlchemyの接続プール機能
+- **非同期処理**: FastAPIの非同期エンドポイント
+- **インデックス最適化**: データベースクエリの高速化
+
+## セキュリティ
+
+- **CORS設定**: 適切なオリジン制限
+- **入力検証**: Pydanticによる型安全性
+- **SQLインジェクション対策**: SQLAlchemy ORMの使用
+- **エラー情報の適切な隠蔽**: 本番環境での詳細エラー非表示
+
+## ログ管理
+
+サーバーアクティビティは `server.log` に記録されます：
+- リクエスト/レスポンス情報
+- エラー情報
+- データベース操作ログ
+
+## トラブルシューティング
+
+### よくある問題
+
+1. **データベース接続エラー**
+   - MySQL サーバーが起動していることを確認
+   - `.env`ファイルのDATABASE_URLが正しいことを確認
+   - データベースが存在することを確認
+
+2. **依存関係エラー**
+   - `pip install -r requirements.txt` で再インストール
+   - Pythonバージョンを確認（3.11以上推奨）
+
+3. **ポート競合**
+   - ポート8000が他のプロセスで使用されていないことを確認
+   - 別のポートで起動: `uvicorn main:app --port 8001`
+
+## 開発ガイドライン
+
+- PEP 8準拠のコーディングスタイル
+- 型ヒントの適切な使用
+- ドキュメント文字列の記述
+- エラーハンドリングの適切な実装
+- セキュリティベストプラクティスの遵守
+
+## ライセンス
+
+このプロジェクトは教育目的で作成されています。
