@@ -24,6 +24,12 @@
 - **エンドポイント**: `POST /purchase`
 - **機能**: 購入データの保存
 - **処理**: 取引データ(TRD)と取引明細(TRD_DTL)の作成
+- **税額計算**: 消費税の自動計算機能
+
+#### 税額計算
+- **エンドポイント**: `POST /calculate-tax`
+- **機能**: 商品価格に基づく税額計算
+- **対応税率**: 標準税率10%、軽減税率8%
 
 #### ヘルスチェック
 - **エンドポイント**: `GET /health`
@@ -63,6 +69,8 @@ pos-app-backend/
 ├── main.py                     # メインアプリケーション
 ├── database.py                 # データベース設定とORMモデル
 ├── models.py                   # Pydanticモデル定義
+├── tax_calculator.py           # 税額計算機能
+├── DigiCertGlobalRootCA.crt.pem # Azure MySQL SSL証明書
 ├── requirements.txt            # Python依存関係
 ├── .env.example               # 環境変数テンプレート
 ├── Dockerfile                 # Dockerコンテナ設定
@@ -179,6 +187,41 @@ curl -X POST "http://localhost:8000/purchase" \
 }
 ```
 
+### 税額計算
+
+```bash
+# 税額計算API
+curl -X POST "http://localhost:8000/calculate-tax" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {
+        "name": "サラサクリップ ブラック",
+        "price": 130,
+        "quantity": 2,
+        "tax_rate": 0.10
+      }
+    ]
+  }'
+
+# レスポンス例
+{
+  "subtotal": 260,
+  "tax_amount": 26,
+  "total_amount": 286,
+  "items": [
+    {
+      "name": "サラサクリップ ブラック",
+      "price": 130,
+      "quantity": 2,
+      "tax_rate": 0.10,
+      "item_total": 260,
+      "item_tax": 26
+    }
+  ]
+}
+```
+
 ## アーキテクチャ
 
 ### レイヤー構造
@@ -217,6 +260,11 @@ curl http://localhost:8000/products/4901681513017
 curl -X POST http://localhost:8000/purchase \
   -H "Content-Type: application/json" \
   -d '{"items":[{"prd_id":1,"prd_code":"4901681513017","prd_name":"サラサクリップ ブラック","prd_price":130,"quantity":1}]}'
+
+# 税額計算テスト
+curl -X POST http://localhost:8000/calculate-tax \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"name":"テスト商品","price":100,"quantity":1,"tax_rate":0.10}]}'
 ```
 
 ## デプロイ
@@ -232,6 +280,12 @@ DATABASE_URL=mysql+pymysql://username:password@server:3306/database
 DEBUG=False
 ```
 
+### SSL接続設定
+本番環境（Azure MySQL）では自動的にSSL接続が有効になります：
+- Azure MySQLホスト（*.azure.com）を自動検出
+- DigiCertGlobalRootCA.crt.pem証明書を使用したセキュア接続
+- 開発環境では通常のMySQL接続を使用
+
 ## パフォーマンス最適化
 
 - **データベース接続プール**: SQLAlchemyの接続プール機能
@@ -244,6 +298,8 @@ DEBUG=False
 - **入力検証**: Pydanticによる型安全性
 - **SQLインジェクション対策**: SQLAlchemy ORMの使用
 - **エラー情報の適切な隠蔽**: 本番環境での詳細エラー非表示
+- **SSL/TLS対応**: Azure MySQL本番環境でのSSL接続
+- **証明書管理**: DigiCertGlobalRootCA.crt.pemによる安全な接続
 
 ## ログ管理
 
@@ -268,6 +324,11 @@ DEBUG=False
 3. **ポート競合**
    - ポート8000が他のプロセスで使用されていないことを確認
    - 別のポートで起動: `uvicorn main:app --port 8001`
+
+4. **SSL接続エラー（本番環境）**
+   - DigiCertGlobalRootCA.crt.pemファイルが存在することを確認
+   - Azure MySQLのSSL設定が有効になっていることを確認
+   - DATABASE_URLにSSLパラメータが含まれていることを確認
 
 ## 開発ガイドライン
 

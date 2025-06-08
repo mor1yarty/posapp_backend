@@ -15,9 +15,22 @@ DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
 DB_NAME = os.getenv("DB_NAME", "pos_app")
 
+# SSL設定の追加（本番環境のAzure MySQL用）
+SSL_CA_PATH = os.path.join(os.path.dirname(__file__), "DigiCertGlobalRootCA.crt.pem")
+
+# Azure MySQL用のSSL設定
+connect_args = {}
+if DB_HOST and "azure.com" in DB_HOST:
+    connect_args = {
+        'ssl': {
+            'ca': SSL_CA_PATH
+        }
+    }
+
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
-engine = create_engine(DATABASE_URL, echo=True)
+# SSL設定付きでエンジンを作成
+engine = create_engine(DATABASE_URL, echo=True, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
