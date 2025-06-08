@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import get_db, PrdMaster, Trd, TrdDtl
 from models import ProductResponse, PurchaseRequest, PurchaseResponse
+from tax_calculator import TaxCalculator
 from typing import Optional
 import logging
 
@@ -74,7 +75,8 @@ async def create_purchase(purchase_request: PurchaseRequest, db: Session = Depen
             EMP_CD=purchase_request.register_staff_code or "9999999999",
             STORE_CD=purchase_request.store_code,
             POS_NO=purchase_request.pos_id,
-            TOTAL_AMT=0  # 初期値
+            TOTAL_AMT=0,  # 初期値
+            TTL_AMT_EX_TAX=0  # 🆕 税抜金額初期値
         )
         
         db.add(new_transaction)
@@ -92,15 +94,24 @@ async def create_purchase(purchase_request: PurchaseRequest, db: Session = Depen
                 PRD_ID=item.product_id,
                 PRD_CODE=item.product_code,
                 PRD_NAME=item.product_name,
-                PRD_PRICE=item.product_price
+                PRD_PRICE=item.product_price,
+                TAX_CD='10'  # 🆕 消費税区分（固定値：10%）
             )
             db.add(dtl_record)
             total_amount += item.product_price
             
         logger.info(f"取引明細作成完了: {len(purchase_request.items)}件, 合計金額: {total_amount}")
         
+        # 🆕 税計算処理
+        tax_calculation = TaxCalculator.calculate_tax_exclusive_amount(total_amount, '10')
+        total_amount_ex_tax = tax_calculation['tax_exclusive_amount']
+        tax_amount = tax_calculation['tax_amount']
+        
+        logger.info(f"税計算結果: 税込={total_amount}, 税抜={total_amount_ex_tax}, 消費税={tax_amount}")
+        
         # 取引テーブルの合計金額を更新
         new_transaction.TOTAL_AMT = total_amount
+        new_transaction.TTL_AMT_EX_TAX = total_amount_ex_tax  # 🆕 税抜金額
         
         # 全ての変更をコミット
         db.commit()
@@ -110,6 +121,8 @@ async def create_purchase(purchase_request: PurchaseRequest, db: Session = Depen
         return PurchaseResponse(
             success=True,
             total_amount=total_amount,
+            total_amount_ex_tax=total_amount_ex_tax,  # 🆕 税抜金額
+            tax_amount=tax_amount,                   # 🆕 消費税額
             transaction_id=transaction_id,
             message="購入処理が正常に完了しました"
         )

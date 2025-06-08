@@ -28,5 +28,7 @@ class PurchaseRequest(BaseModel):
 class PurchaseResponse(BaseModel):
     success: bool
     total_amount: int
+    total_amount_ex_tax: Optional[int] = None  # 🆕 税抜金額
+    tax_amount: Optional[int] = None          # 🆕 消費税額
     transaction_id: Optional[int] = None
     message: Optional[str] = None

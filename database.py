@@ -43,6 +43,7 @@ class Trd(Base):
     STORE_CD = Column(CHAR(5), nullable=False, default='30')
     POS_NO = Column(CHAR(3), nullable=False, default='90')
     TOTAL_AMT = Column(Integer, nullable=False, default=0)
+    TTL_AMT_EX_TAX = Column(Integer, nullable=True, comment='合計金額（税抜）')  # 🆕 Lv2追加
 
 class TrdDtl(Base):
     __tablename__ = "TRD_DTL"
@@ -53,6 +54,7 @@ class TrdDtl(Base):
     PRD_CODE = Column(CHAR(13), nullable=False)
     PRD_NAME = Column(String(100), nullable=False)
     PRD_PRICE = Column(Integer, nullable=False)
+    TAX_CD = Column(CHAR(2), nullable=True, default='10', comment='消費税区分')  # 🆕 Lv2追加
 
 # データベースセッションの取得
 def get_db():
