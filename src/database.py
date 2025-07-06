@@ -14,16 +14,28 @@ if os.getenv("ENVIRONMENT") != "production":
         # dotenvが利用できない場合はスキップ
         pass
 
-# Supabase PostgreSQL接続設定
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://zhppoucgzyogewhdjire.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpocHBvdWNnenlvZ2V3aGRqaXJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3OTMzMjgsImV4cCI6MjA2NzM2OTMyOH0.rS8EoZq0AUPsAukWBBWfmco_LSmULXl9fxF0gMvMOhE")
+# Supabase REST API接続設定（HTTPSアクセス用）
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-# PostgreSQL接続設定（Supabase）
-DB_HOST = "db.zhppoucgzyogewhdjire.supabase.co"
-DB_PORT = 5432
-DB_USER = "postgres"
-DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD", "step4pos-supabase")
-DB_NAME = "postgres"
+# PostgreSQL直接接続設定（SQLAlchemy用）
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME", "postgres")
+
+# 必須環境変数チェック
+required_vars = {
+    "SUPABASE_URL": SUPABASE_URL,
+    "SUPABASE_KEY": SUPABASE_KEY,
+    "DB_HOST": DB_HOST,
+    "DB_PASSWORD": DB_PASSWORD
+}
+
+missing_vars = [key for key, value in required_vars.items() if not value]
+if missing_vars:
+    raise ValueError(f"必須の環境変数が設定されていません: {', '.join(missing_vars)}")
 
 # PostgreSQL接続文字列（Supabase）
 # IPv6問題を回避するため、直接的な接続文字列を使用
