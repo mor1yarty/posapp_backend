@@ -1,7 +1,7 @@
-# POSアプリ Supabase移行 完了レポート
+# POSアプリ クラウドDB移行 完了レポート
 
 ## プロジェクト概要
-pos-app-backendのMySQL+Azure構成からSupabaseハイブリッド構成への移行を完了しました。
+pos-app-backendのMySQL+クラウド構成からクラウドDBハイブリッド構成への移行を完了しました。
 
 ## 移行結果サマリー
 
@@ -10,7 +10,7 @@ pos-app-backendのMySQL+Azure構成からSupabaseハイブリッド構成への�
 #### Phase 1: 環境構築
 - [x] git worktree環境構築
 - [x] pos-app-backend/main/ (MySQL版保持)
-- [x] pos-app-backend/supabase/ (Supabase版)
+- [x] pos-app-backend/cloud-db/ (クラウドDB版)
 
 #### Phase 2: データベース移行
 - [x] MySQL → PostgreSQL スキーマ変換
@@ -21,12 +21,12 @@ pos-app-backendのMySQL+Azure構成からSupabaseハイブリッド構成への�
 #### Phase 3: Edge Functions実装
 - [x] health function: ヘルスチェック機能
 - [x] product-simple function: 商品検索（簡易版）
-- [x] Supabaseへのデプロイ完了
+- [x] クラウドDBへのデプロイ完了
 
 #### Phase 4: FastAPI移行
 - [x] database.py: PostgreSQL対応
 - [x] main.py: カラム名修正
-- [x] requirements.txt: Supabase依存関係追加
+- [x] requirements.txt: クラウドDB依存関係追加
 - [x] 環境変数設定（.env）
 
 #### Phase 5: ドキュメント作成
@@ -40,23 +40,23 @@ pos-app-backendのMySQL+Azure構成からSupabaseハイブリッド構成への�
 
 ### 移行前 (MySQL版)
 ```
-フロントエンド → FastAPI → Azure MySQL
+フロントエンド → FastAPI → クラウド MySQL
 ```
 
-### 移行後 (Supabaseハイブリッド版)
+### 移行後 (クラウドDBハイブリッド版)
 ```
 フロントエンド
     ↓
 ┌─────────────────┬─────────────────┐
 │ Edge Functions  │ FastAPI        │
-│ (Supabase)      │ (Azure App     │
+│ (クラウドDB)   │ (クラウドApp   │
 │ - GET /health   │  Service)      │
 │ - GET /product  │ - POST /buy    │
 │   (simple)      │ - GET /product │
 │                 │   (full)       │
 └─────────────────┴─────────────────┘
     ↓
-Supabase PostgreSQL
+クラウド PostgreSQL
 ```
 
 ## 技術変更詳細
@@ -65,7 +65,7 @@ Supabase PostgreSQL
 | 項目 | 移行前 | 移行後 |
 |------|--------|--------|
 | RDBMS | MySQL 8.0 | PostgreSQL 15 |
-| ホスティング | Azure Database | Supabase |
+| ホスティング | クラウドDatabase | クラウドDB |
 | テーブル名 | 大文字 (PRD_MASTER) | 小文字 (prd_master) |
 | 主キー | AUTO_INCREMENT | SERIAL |
 | 接続 | pymysql | psycopg2 |
@@ -90,17 +90,17 @@ Supabase PostgreSQL
 ## 運用上のメリット
 
 ### 開発・保守性
-- **並行開発**: main/とsupabase/で比較開発可能
+- **並行開発**: main/とcloud-db/で比較開発可能
 - **段階移行**: リスク分散した移行戦略
 - **モダン技術**: Edge Functions経験獲得
 
 ### コスト面
 - **従量課金**: Edge Functionsは使用量ベース
-- **管理コスト**: Supabaseによる運用簡素化
+- **管理コスト**: クラウドDBによる運用簡素化
 - **スケーラビリティ**: 自動スケーリング対応
 
 ### セキュリティ
-- **統合認証**: Supabase Auth活用可能
+- **統合認証**: クラウドDB Auth活用可能
 - **API管理**: 一元的なAPI管理
 - **バックアップ**: 自動バックアップ機能
 
@@ -110,7 +110,7 @@ Supabase PostgreSQL
 1. **git worktree**: 並行ブランチ開発の有用性
 2. **Edge Functions**: TypeScript/Denoエコシステム
 3. **PostgreSQL**: MySQLとの微細な違い
-4. **Supabase MCP**: AI開発ツールとの連携
+4. **クラウドDB MCP**: AI開発ツールとの連携
 
 ### 開発プロセス
 1. **段階的移行**: 一度に全て変更しないアプローチ
@@ -126,12 +126,12 @@ Supabase PostgreSQL
 
 ### 中期 (3-6ヶ月)
 - [ ] POST /purchase のEdge Functions移行検討
-- [ ] Supabase Auth導入
+- [ ] クラウドDB Auth導入
 - [ ] リアルタイム機能の活用
 
 ### 長期 (6ヶ月以上)
 - [ ] 完全Edge Functions化の検討
-- [ ] Supabase Storageの活用
+- [ ] クラウドDB Storageの活用
 - [ ] 他マイクロサービスとの統合
 
 ## リスク評価
@@ -144,14 +144,14 @@ Supabase PostgreSQL
 ### 中リスク
 - ⚠️ Edge Functionsの新技術習得コスト
 - ⚠️ PostgreSQL固有機能への適応
-- ⚠️ Supabase依存度の増加
+- ⚠️ クラウドDB依存度の増加
 
 ### 高リスク
 - 🚨 なし（段階的移行により回避）
 
 ## 結論
 
-POSアプリのSupabaseハイブリッド移行は **成功** しました。
+POSアプリのクラウドDBハイブリッド移行は **成功** しました。
 
 ### 主な成果
 1. **技術モダン化**: Edge Functions + PostgreSQL

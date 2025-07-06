@@ -1,7 +1,7 @@
-# POSアプリ Supabase ハイブリッド移行プロジェクト
+# POSアプリ クラウドDB ハイブリッド移行プロジェクト
 
 ## プロジェクト概要
-pos-app-backendをSupabaseハイブリッド構成に移行。git worktreeを使用してmainブランチとsupabase-migrationブランチを並行管理し、Edge Functions + FastAPI の分担構成を実現する。
+pos-app-backendをクラウドDBハイブリッド構成に移行。git worktreeを使用してmainブランチとcloud-migrationブランチを並行管理し、Edge Functions + FastAPI の分担構成を実現する。
 
 ## アーキテクチャ設計
 
@@ -18,7 +18,7 @@ pos-app-backendをSupabaseハイブリッド構成に移行。git worktreeを使
 │                 │ - 複雑ロジック   │
 └─────────────────┴───────────────────┘
     ↓
-Supabase PostgreSQL
+クラウド PostgreSQL
 ```
 
 ## リポジトリ構成
@@ -32,13 +32,13 @@ pos-app-backend/
 │   ├── models.py
 │   ├── tax_calculator.py
 │   └── requirements.txt
-└── supabase/                      # supabase-migrationブランチ
-    ├── src/                      # FastAPI Supabase版
+└── cloud-db/                  # cloud-migrationブランチ
+    ├── src/                      # FastAPI クラウドDB版
     │   ├── main.py
     │   ├── database.py           # PostgreSQL版
     │   ├── models.py
     │   └── tax_calculator.py
-    ├── supabase/                 # Edge Functions
+    ├── functions/                # Edge Functions
     │   └── functions/
     │       ├── health/
     │       │   └── index.ts
@@ -118,7 +118,7 @@ CREATE TABLE trd_dtl (
 - **Phase 1**: git worktree環境構築 (0.5日) ✅
 - **Phase 2**: データベース移行 (2日)
 - **Phase 3**: Edge Functions実装 (1.5日)
-- **Phase 4**: FastAPI Supabase対応 (2.5日)
+- **Phase 4**: FastAPI クラウドDB対応 (2.5日)
 - **Phase 5**: デプロイと検証 (1.5日)
 
 **合計**: 約8日間

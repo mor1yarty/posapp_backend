@@ -17,7 +17,7 @@ POSアプリケーションのAPIエンドポイントを Edge Functions と Fas
 
 #### Edge Functions実装
 ```typescript
-// supabase/functions/health/index.ts
+// cloud-db/functions/health/index.ts
 export default async function handler(req: Request) {
   return new Response(JSON.stringify({
     status: "healthy",
@@ -52,12 +52,12 @@ async def health_check():
 
 #### Edge Functions実装 (簡易版)
 ```typescript
-// supabase/functions/product-simple/index.ts
+// cloud-db/functions/product-simple/index.ts
 export default async function handler(req: Request) {
   const url = new URL(req.url);
   const code = url.pathname.split('/').pop();
   
-  const { data: product, error } = await supabase
+  const { data: product, error } = await cloudDB
     .from('prd_master')
     .select('prd_id, code, name, price')
     .eq('code', code)
@@ -86,17 +86,17 @@ export default async function handler(req: Request) {
 ```python
 @app.get("/products/{code}", response_model=Optional[ProductResponse])
 async def get_product(code: str, db: Session = Depends(get_db)):
-    product = db.query(PrdMaster).filter(PrdMaster.CODE == code).first()
+    product = db.query(PrdMaster).filter(PrdMaster.code == code).first()
     
     if product:
         return ProductResponse(
-            product_id=product.PRD_ID,
-            product_code=product.CODE,
-            product_name=product.PRODUCT_NAME,
-            product_price=product.PRICE,
-            color=product.COLOR,
-            item_code=product.ITEM_CODE,
-            full_name=product.NAME
+            product_id=product.prd_id,
+            product_code=product.code,
+            product_name=product.product_name,
+            product_price=product.price,
+            color=product.color,
+            item_code=product.item_code,
+            full_name=product.name
         )
     return None
 ```
@@ -170,8 +170,8 @@ async def create_purchase(purchase_request: PurchaseRequest, db: Session = Depen
 2. GET /products (簡易版) → Edge Functions
 
 ### Phase 2: 既存ロジック保護
-1. POST /purchase → FastAPI (Supabase DB)
-2. GET /products (完全版) → FastAPI (Supabase DB)
+1. POST /purchase → FastAPI (クラウドDB)
+2. GET /products (完全版) → FastAPI (クラウドDB)
 
 ### Phase 3: 段階的移行
 1. ユーザーフィードバック収集

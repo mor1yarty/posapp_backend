@@ -1,7 +1,7 @@
 # デプロイガイド
 
 ## 概要
-POSアプリのSupabaseハイブリッド構成でのデプロイ手順を説明します。
+POSアプリのクラウドDBハイブリッド構成でのデプロイ手順を説明します。
 
 ## アーキテクチャ概要
 ```
@@ -9,68 +9,68 @@ POSアプリのSupabaseハイブリッド構成でのデプロイ手順を説明
     ↓
 ┌─────────────────┬─────────────────┐
 │ Edge Functions  │ FastAPI        │
-│ (Supabase)      │ (Azure App     │
+│ (クラウドDB)    │ (クラウドApp   │
 │                 │  Service)      │
 └─────────────────┴─────────────────┘
     ↓
-Supabase PostgreSQL Database
+クラウド PostgreSQL Database
 ```
 
 ## デプロイ対象
 
-### 1. Supabase Edge Functions
+### 1. クラウドDB Edge Functions
 - `health`: ヘルスチェック機能
 - `product-simple`: 商品検索（簡易版）
 
-### 2. FastAPI (Azure App Service)
+### 2. FastAPI (クラウドApp Service)
 - `GET /products/{code}`: 商品検索（完全版）
 - `POST /purchase`: 購入処理
 - `GET /health`: ヘルスチェック（FastAPI版）
 
-### 3. Supabase Database
+### 3. クラウドDatabase
 - PostgreSQLデータベース
 - 3テーブル: prd_master, trd, trd_dtl
 
 ## Edge Functions デプロイ
 
 ### 前提条件
-- Supabase CLIのインストール
-- Supabaseプロジェクトへのアクセス権
+- クラウドDB CLIのインストール
+- クラウドDBプロジェクトへのアクセス権
 
 ### デプロイ手順
 ```bash
-# 1. Supabase CLIでログイン
-supabase login
+# 1. クラウドDB CLIでログイン
+cloud-db login
 
 # 2. プロジェクトとリンク
-supabase link --project-ref zhppoucgzyogewhdjire
+cloud-db link --project-ref [your-project-id]
 
 # 3. Edge Functions デプロイ
-supabase functions deploy health
-supabase functions deploy product-simple
+cloud-db functions deploy health
+cloud-db functions deploy product-simple
 
 # 4. 動作確認
-curl https://zhppoucgzyogewhdjire.supabase.co/functions/v1/health
-curl https://zhppoucgzyogewhdjire.supabase.co/functions/v1/product-simple/4901427401234
+curl https://[your-project-id].example.co/functions/v1/health
+curl https://[your-project-id].example.co/functions/v1/product-simple/4901427401234
 ```
 
 ### Edge Functions URL
-- Health Check: `https://zhppoucgzyogewhdjire.supabase.co/functions/v1/health`
-- Product Simple: `https://zhppoucgzyogewhdjire.supabase.co/functions/v1/product-simple/{code}`
+- Health Check: `https://[your-project-id].example.co/functions/v1/health`
+- Product Simple: `https://[your-project-id].example.co/functions/v1/product-simple/{code}`
 
-## FastAPI (Azure App Service) デプロイ
+## FastAPI (クラウドApp Service) デプロイ
 
 ### 前提条件
-- Azure CLIのインストール
-- Azure App Serviceリソース
+- クラウドCLIのインストール
+- クラウドApp Serviceリソース
 
 ### 環境変数設定
-Azure App Serviceで以下の環境変数を設定：
+クラウドApp Serviceで以下の環境変数を設定：
 
 ```bash
-SUPABASE_URL=https://zhppoucgzyogewhdjire.supabase.co
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpocHBvdWNnenlvZ2V3aGRqaXJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3OTMzMjgsImV4cCI6MjA2NzM2OTMyOH0.rS8EoZq0AUPsAukWBBWfmco_LSmULXl9fxF0gMvMOhE
-SUPABASE_DB_PASSWORD=step4pos-supabase
+CLOUD_DB_URL=https://[your-project-id].example.co
+CLOUD_DB_KEY=your-api-key
+CLOUD_DB_PASSWORD=your-db-password
 DEBUG=False
 HOST=0.0.0.0
 PORT=8000
@@ -79,23 +79,23 @@ PORT=8000
 ### デプロイ手順
 ```bash
 # 1. src/ディレクトリに移動
-cd supabase/src
+cd cloud-db/src
 
 # 2. requirements.txt確認
 cat requirements.txt
 
-# 3. Azure App Serviceにデプロイ
-az webapp up --name tech0-step4-posapp --resource-group your-resource-group
+# 3. クラウドApp Serviceにデプロイ
+cloud-cli webapp up --name your-app-name --resource-group your-resource-group
 
 # 4. 動作確認
-curl https://tech0-step4-posapp.azurewebsites.net/health
-curl https://tech0-step4-posapp.azurewebsites.net/products/4901427401234
+curl https://your-app-name.cloudservice.net/health
+curl https://your-app-name.cloudservice.net/products/4901427401234
 ```
 
 ## データベース確認
 
-### Supabaseコンソールでの確認
-1. https://supabase.com/dashboard/project/zhppoucgzyogewhdjire
+### クラウドDBコンソールでの確認
+1. https://clouddb.example.com/dashboard/project/[your-project-id]
 2. Table Editorでテーブル確認
 3. SQL Editorでデータ確認
 
@@ -116,22 +116,22 @@ SELECT * FROM trd_dtl ORDER BY trd_id DESC LIMIT 10;
 ### Edge Functions テスト
 ```bash
 # ヘルスチェック
-curl https://zhppoucgzyogewhdjire.supabase.co/functions/v1/health
+curl https://[your-project-id].example.co/functions/v1/health
 
 # 商品検索（簡易版）
-curl https://zhppoucgzyogewhdjire.supabase.co/functions/v1/product-simple/4901427401234
+curl https://[your-project-id].example.co/functions/v1/product-simple/4901427401234
 ```
 
 ### FastAPI テスト
 ```bash
 # ヘルスチェック
-curl https://tech0-step4-posapp.azurewebsites.net/health
+curl https://your-app-name.cloudservice.net/health
 
 # 商品検索（完全版）
-curl https://tech0-step4-posapp.azurewebsites.net/products/4901427401234
+curl https://your-app-name.cloudservice.net/products/4901427401234
 
 # 購入処理
-curl -X POST https://tech0-step4-posapp.azurewebsites.net/purchase \
+curl -X POST https://your-app-name.cloudservice.net/purchase \
   -H "Content-Type: application/json" \
   -d '{
     "items": [
@@ -148,15 +148,15 @@ curl -X POST https://tech0-step4-posapp.azurewebsites.net/purchase \
 ## パフォーマンス監視
 
 ### Edge Functions
-- Supabase Dashboardの Function Metrics
+- クラウドDB Dashboardの Function Metrics
 - レスポンス時間とエラー率を監視
 
 ### FastAPI
-- Azure Application Insightsで監視
+- クラウドApp Insightsで監視
 - メトリクス: レスポンス時間、エラー率、リクエスト数
 
 ### データベース
-- Supabase Dashboard の Database監視
+- クラウドDB Dashboard の Database監視
 - 接続数、クエリ実行時間を確認
 
 ## トラブルシューティング
@@ -169,13 +169,13 @@ curl -X POST https://tech0-step4-posapp.azurewebsites.net/purchase \
    - OPTIONSリクエスト処理を確認
 
 2. **データベース接続エラー**
-   - SUPABASE_URL, SUPABASE_ANON_KEY環境変数を確認
+   - CLOUD_DB_URL, CLOUD_DB_KEY環境変数を確認
    - Row Level Securityの設定を確認
 
 #### FastAPI
 1. **PostgreSQL接続エラー**
    - DATABASE_URL形式を確認
-   - SUPABASE_DB_PASSWORD設定を確認
+   - CLOUD_DB_PASSWORD設定を確認
 
 2. **SQLAlchemy エラー**
    - テーブル名、カラム名の大文字小文字を確認
@@ -204,5 +204,5 @@ curl -X POST https://tech0-step4-posapp.azurewebsites.net/purchase \
 - [ ] セキュリティアップデート
 
 ### バックアップ
-- Supabaseの自動バックアップ機能を活用
+- クラウドDBの自動バックアップ機能を活用
 - 重要データの定期エクスポート
