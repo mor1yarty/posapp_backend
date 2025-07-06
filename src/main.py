@@ -22,7 +22,7 @@ app.add_middleware(
     allow_origins=[
         "https://localhost:3000",  # 開発環境
         "https://tech0-step4-posapp.azurewebsites.net",  # 本番Azure App Service
-        "https://app-step4-67.azurewebsites.net"  # フロントエンド
+        "https://posapp-frontend.vercel.app/"  # フロントエンド
     ],
     allow_credentials=True,
     allow_methods=["*"],
