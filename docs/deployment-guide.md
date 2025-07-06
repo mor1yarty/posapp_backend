@@ -85,11 +85,11 @@ cd supabase/src
 cat requirements.txt
 
 # 3. Azure App Serviceにデプロイ
-az webapp up --name your-app-name --resource-group your-resource-group
+az webapp up --name tech0-step4-posapp --resource-group your-resource-group
 
 # 4. 動作確認
-curl https://your-app-name.azurewebsites.net/health
-curl https://your-app-name.azurewebsites.net/products/4901427401234
+curl https://tech0-step4-posapp.azurewebsites.net/health
+curl https://tech0-step4-posapp.azurewebsites.net/products/4901427401234
 ```
 
 ## データベース確認
@@ -125,13 +125,13 @@ curl https://zhppoucgzyogewhdjire.supabase.co/functions/v1/product-simple/490142
 ### FastAPI テスト
 ```bash
 # ヘルスチェック
-curl https://your-app-name.azurewebsites.net/health
+curl https://tech0-step4-posapp.azurewebsites.net/health
 
 # 商品検索（完全版）
-curl https://your-app-name.azurewebsites.net/products/4901427401234
+curl https://tech0-step4-posapp.azurewebsites.net/products/4901427401234
 
 # 購入処理
-curl -X POST https://your-app-name.azurewebsites.net/purchase \
+curl -X POST https://tech0-step4-posapp.azurewebsites.net/purchase \
   -H "Content-Type: application/json" \
   -d '{
     "items": [

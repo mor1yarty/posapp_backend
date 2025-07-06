@@ -18,8 +18,9 @@ app = FastAPI(title="POS Application API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://localhost:3000",  # HTTPS対応
-        "https://app-step4-67.azurewebsites.net"
+        "https://localhost:3000",  # 開発環境
+        "https://tech0-step4-posapp.azurewebsites.net",  # 本番Azure App Service
+        "https://app-step4-67.azurewebsites.net"  # フロントエンド
     ],
     allow_credentials=True,
     allow_methods=["*"],
