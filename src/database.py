@@ -26,10 +26,17 @@ DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD", "step4pos-supabase")
 DB_NAME = "postgres"
 
 # PostgreSQL接続文字列（Supabase）
+# IPv6問題を回避するため、直接的な接続文字列を使用
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# Supabase用の接続設定
-connect_args = {}
+# Supabase用の接続設定（SSL必須、IPv6対応）
+connect_args = {
+    "sslmode": "require",
+    "connect_timeout": 30,
+    "keepalives_idle": 600,
+    "keepalives_interval": 30,
+    "keepalives_count": 3
+}
 
 # SSL設定付きでエンジンを作成
 engine = create_engine(DATABASE_URL, echo=True, connect_args=connect_args)

@@ -2,11 +2,13 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from database import get_db, PrdMaster, Trd, TrdDtl
+from database import get_db, PrdMaster, Trd, TrdDtl, SUPABASE_URL, SUPABASE_KEY
 from models import ProductResponse, PurchaseRequest, PurchaseResponse
 from tax_calculator import TaxCalculator
 from typing import Optional
 import logging
+import httpx
+import os
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -31,8 +33,47 @@ app.add_middleware(
 async def root():
     return {"message": "POS Application API"}
 
+async def get_product_via_rest_api(code: str):
+    """
+    Supabase REST API経由で商品情報を取得
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            response = await client.get(
+                f"{SUPABASE_URL}/rest/v1/prd_master?code=eq.{code}&select=*",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                products = response.json()
+                if products:
+                    product = products[0]
+                    return ProductResponse(
+                        product_id=product["prd_id"],
+                        product_code=product["code"],
+                        product_name=product["product_name"],
+                        product_price=product["price"],
+                        color=product["color"],
+                        item_code=product["item_code"],
+                        full_name=product["name"]
+                    )
+                return None
+            else:
+                logger.error(f"Supabase API エラー: {response.status_code} - {response.text}")
+                return None
+                
+    except Exception as e:
+        logger.error(f"REST API経由での商品検索エラー: {e}")
+        return None
+
 @app.get("/products/{code}", response_model=Optional[ProductResponse])
-async def get_product(code: str, db: Session = Depends(get_db)):
+async def get_product(code: str):
     """
     商品マスタ検索API
     指定された商品コードに基づいて商品情報を取得する
@@ -40,19 +81,12 @@ async def get_product(code: str, db: Session = Depends(get_db)):
     try:
         logger.info(f"商品検索開始: コード = {code}")
         
-        product = db.query(PrdMaster).filter(PrdMaster.code == code).first()
+        # まずREST API経由で試行
+        product = await get_product_via_rest_api(code)
         
         if product:
-            logger.info(f"商品見つかりました: {product.name}")
-            return ProductResponse(
-                product_id=product.prd_id,
-                product_code=product.code,
-                product_name=product.product_name,
-                product_price=product.price,
-                color=product.color,
-                item_code=product.item_code,
-                full_name=product.name
-            )
+            logger.info(f"商品見つかりました: {product.full_name}")
+            return product
         else:
             logger.info(f"商品が見つかりませんでした: コード = {code}")
             return None
