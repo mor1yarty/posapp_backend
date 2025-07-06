@@ -95,80 +95,138 @@ async def get_product(code: str):
         logger.error(f"商品検索中にエラーが発生しました: {e}")
         raise HTTPException(status_code=500, detail="商品検索中にエラーが発生しました")
 
-@app.post("/purchase", response_model=PurchaseResponse)
-async def create_purchase(purchase_request: PurchaseRequest, db: Session = Depends(get_db)):
+async def create_purchase_via_rest_api(purchase_request: PurchaseRequest):
     """
-    購入処理API
-    購入商品リストを受け取り、取引と取引明細を作成する
+    Supabase REST API経由で購入処理を実行
     """
     try:
-        logger.info("購入処理開始")
+        logger.info("購入処理開始 (REST API経由)")
         
         # 購入商品が空の場合はエラー
         if not purchase_request.items:
             raise HTTPException(status_code=400, detail="購入商品が指定されていません")
         
-        # 取引レコード作成
-        new_transaction = Trd(
-            emp_cd=purchase_request.register_staff_code or "9999999999",
-            store_cd=purchase_request.store_code,
-            pos_no=purchase_request.pos_id,
-            total_amt=0,  # 初期値
-            ttl_amt_ex_tax=0  # 🆕 税抜金額初期値
-        )
-        
-        db.add(new_transaction)
-        db.flush()  # TRD_IDを取得するためにflush
-        
-        transaction_id = new_transaction.trd_id
-        logger.info(f"取引ID作成: {transaction_id}")
-        
-        # 取引明細レコード作成と合計金額計算
-        total_amount = 0
-        for idx, item in enumerate(purchase_request.items):
-            dtl_record = TrdDtl(
-                trd_id=transaction_id,
-                dtl_id=idx + 1,  # 1から開始
-                prd_id=item.product_id,
-                prd_code=item.product_code,
-                prd_name=item.product_name,
-                prd_price=item.product_price,
-                tax_cd='10'  # 🆕 消費税区分（固定値：10%）
-            )
-            db.add(dtl_record)
-            total_amount += item.product_price
+        async with httpx.AsyncClient() as client:
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "return=representation"
+            }
             
-        logger.info(f"取引明細作成完了: {len(purchase_request.items)}件, 合計金額: {total_amount}")
-        
-        # 🆕 税計算処理
-        tax_calculation = TaxCalculator.calculate_tax_exclusive_amount(total_amount, '10')
-        total_amount_ex_tax = tax_calculation['tax_exclusive_amount']
-        tax_amount = tax_calculation['tax_amount']
-        
-        logger.info(f"税計算結果: 税込={total_amount}, 税抜={total_amount_ex_tax}, 消費税={tax_amount}")
-        
-        # 取引テーブルの合計金額を更新
-        new_transaction.total_amt = total_amount
-        new_transaction.ttl_amt_ex_tax = total_amount_ex_tax  # 🆕 税抜金額
-        
-        # 全ての変更をコミット
-        db.commit()
-        
-        logger.info("購入処理完了")
-        
-        return PurchaseResponse(
-            success=True,
-            total_amount=total_amount,
-            total_amount_ex_tax=total_amount_ex_tax,  # 🆕 税抜金額
-            tax_amount=tax_amount,                   # 🆕 消費税額
-            transaction_id=transaction_id,
-            message="購入処理が正常に完了しました"
-        )
+            # 取引レコード作成
+            trd_data = {
+                "emp_cd": purchase_request.register_staff_code or "9999999999",
+                "store_cd": purchase_request.store_code or "30",
+                "pos_no": purchase_request.pos_id or "90",
+                "total_amt": 0,
+                "ttl_amt_ex_tax": 0
+            }
+            
+            # 取引テーブルにインサート
+            trd_response = await client.post(
+                f"{SUPABASE_URL}/rest/v1/trd",
+                headers=headers,
+                json=trd_data
+            )
+            
+            if trd_response.status_code != 201:
+                logger.error(f"取引作成エラー: {trd_response.status_code} - {trd_response.text}")
+                raise HTTPException(status_code=500, detail="取引作成に失敗しました")
+            
+            transaction = trd_response.json()[0]
+            transaction_id = transaction["trd_id"]
+            logger.info(f"取引ID作成: {transaction_id}")
+            
+            # 取引明細レコード作成と合計金額計算
+            total_amount = 0
+            dtl_records = []
+            
+            for idx, item in enumerate(purchase_request.items):
+                dtl_record = {
+                    "trd_id": transaction_id,
+                    "dtl_id": idx + 1,
+                    "prd_id": item.product_id,
+                    "prd_code": item.product_code,
+                    "prd_name": item.product_name,
+                    "prd_price": item.product_price,
+                    "tax_cd": "10"
+                }
+                dtl_records.append(dtl_record)
+                total_amount += item.product_price
+            
+            # 取引明細テーブルにバッチインサート
+            dtl_response = await client.post(
+                f"{SUPABASE_URL}/rest/v1/trd_dtl",
+                headers=headers,
+                json=dtl_records
+            )
+            
+            if dtl_response.status_code != 201:
+                logger.error(f"取引明細作成エラー: {dtl_response.status_code} - {dtl_response.text}")
+                raise HTTPException(status_code=500, detail="取引明細作成に失敗しました")
+            
+            logger.info(f"取引明細作成完了: {len(purchase_request.items)}件, 合計金額: {total_amount}")
+            
+            # 税計算処理
+            tax_calculation = TaxCalculator.calculate_tax_exclusive_amount(total_amount, '10')
+            total_amount_ex_tax = tax_calculation['tax_exclusive_amount']
+            tax_amount = tax_calculation['tax_amount']
+            
+            logger.info(f"税計算結果: 税込={total_amount}, 税抜={total_amount_ex_tax}, 消費税={tax_amount}")
+            
+            # 取引テーブルの合計金額を更新
+            update_data = {
+                "total_amt": total_amount,
+                "ttl_amt_ex_tax": total_amount_ex_tax
+            }
+            
+            update_response = await client.patch(
+                f"{SUPABASE_URL}/rest/v1/trd?trd_id=eq.{transaction_id}",
+                headers=headers,
+                json=update_data
+            )
+            
+            if update_response.status_code not in [200, 204]:
+                logger.error(f"取引更新エラー: {update_response.status_code} - {update_response.text}")
+                raise HTTPException(status_code=500, detail="取引更新に失敗しました")
+            
+            logger.info("購入処理完了 (REST API経由)")
+            
+            return PurchaseResponse(
+                success=True,
+                total_amount=total_amount,
+                total_amount_ex_tax=total_amount_ex_tax,
+                tax_amount=tax_amount,
+                transaction_id=transaction_id,
+                message="購入処理が正常に完了しました (REST API経由)"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"購入処理中にエラーが発生しました (REST API): {e}")
+        logger.error(f"詳細エラー: {error_details}")
+        raise HTTPException(status_code=500, detail=f"購入処理中にエラーが発生しました: {str(e)}")
+
+@app.post("/purchase", response_model=PurchaseResponse)
+async def create_purchase(purchase_request: PurchaseRequest):
+    """
+    購入処理API
+    購入商品リストを受け取り、取引と取引明細を作成する
+    """
+    try:
+        # まずREST API経由で試行
+        return await create_purchase_via_rest_api(purchase_request)
         
     except Exception as e:
-        logger.error(f"購入処理中にエラーが発生しました: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail="購入処理中にエラーが発生しました")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"REST API経由の購入処理に失敗: {e}")
+        logger.error(f"詳細エラー: {error_details}")
+        raise HTTPException(status_code=500, detail=f"購入処理中にエラーが発生しました: {str(e)}")
 
 @app.get("/health")
 async def health_check():
