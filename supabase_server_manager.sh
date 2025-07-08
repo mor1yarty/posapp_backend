@@ -22,10 +22,6 @@ BACKEND_PID_FILE="$SCRIPT_DIR/.supabase-backend.pid"
 # ログファイルパス
 BACKEND_LOG_FILE="$SCRIPT_DIR/supabase-backend.log"
 
-# 環境変数設定
-export SUPABASE_DB_PASSWORD="step4pos-supabase"
-export ENVIRONMENT="development"
-
 # ヘルプ表示
 show_help() {
     echo -e "${BLUE}Supabase対応POSアプリ サーバーマネジメントスクリプト${NC}"
@@ -65,8 +61,10 @@ start_backend() {
     echo -e "${YELLOW}Supabase対応FastAPIを開始しています...${NC}"
     
     if is_process_running "$BACKEND_PID_FILE"; then
-        echo -e "${RED}Supabase対応FastAPIは既に実行中です${NC}"
-        return 1
+        echo -e "${YELLOW}Supabase対応FastAPIは既に実行中です${NC}"
+        echo -e "${GREEN}現在の状態:${NC}"
+        check_status
+        return 0
     fi
     
     if [[ ! -d "$BACKEND_DIR" ]]; then
@@ -76,6 +74,11 @@ start_backend() {
     
     cd "$BACKEND_DIR"
     
+    # 環境変数ファイルを読み込み
+    if [[ -f "../.env" ]]; then
+        export $(grep -v '^#' ../.env | xargs)
+    fi
+    
     # 仮想環境確認
     if [[ ! -d "venv" ]]; then
         echo -e "${YELLOW}仮想環境を作成しています...${NC}"
@@ -84,7 +87,8 @@ start_backend() {
     
     # 仮想環境をアクティベートして依存関係をインストール
     source venv/bin/activate
-    pip install -r requirements.txt > /dev/null 2>&1
+    echo -e "${YELLOW}依存関係をインストール中...${NC}"
+    pip install -r ../requirements.txt
     
     # Supabase対応FastAPI開始
     nohup python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000 > "$BACKEND_LOG_FILE" 2>&1 &
