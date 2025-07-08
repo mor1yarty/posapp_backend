@@ -21,8 +21,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://localhost:3000",  # 開発環境
+        "http://localhost:3000",   # 開発環境HTTP
         "https://tech0-step4-posapp.azurewebsites.net",  # 本番Azure App Service
-        "https://posapp-frontend.vercel.app/"  # フロントエンド
+        "https://posapp-frontend.vercel.app/",  # フロントエンド
+        "http://localhost:*",      # Flutter Web開発用
+        "*"  # 開発時のみ全てのオリジンを許可
     ],
     allow_credentials=True,
     allow_methods=["*"],
