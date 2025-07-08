@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -10,11 +10,22 @@ import logging
 import httpx
 import os
 
+# APIキー設定
+API_KEY = os.getenv("API_KEY", "pos-flutter-app-2024-secure-key")
+
 # ログ設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="POS Application API", version="1.0.0")
+
+# APIキー認証ミドルウェア
+async def verify_api_key(x_api_key: str = Header(..., description="API Key for authentication")):
+    """APIキー認証を行う"""
+    if x_api_key != API_KEY:
+        logger.warning(f"無効なAPIキーでのアクセス試行: {x_api_key}")
+        raise HTTPException(status_code=401, detail="無効なAPIキーです")
+    return x_api_key
 
 # CORS設定（フロントエンドからのアクセスを許可）
 app.add_middleware(
@@ -76,7 +87,7 @@ async def get_product_via_rest_api(code: str):
         return None
 
 @app.get("/products/{code}", response_model=Optional[ProductResponse])
-async def get_product(code: str):
+async def get_product(code: str, api_key: str = Depends(verify_api_key)):
     """
     商品マスタ検索API
     指定された商品コードに基づいて商品情報を取得する
@@ -215,7 +226,7 @@ async def create_purchase_via_rest_api(purchase_request: PurchaseRequest):
         raise HTTPException(status_code=500, detail=f"購入処理中にエラーが発生しました: {str(e)}")
 
 @app.post("/purchase", response_model=PurchaseResponse)
-async def create_purchase(purchase_request: PurchaseRequest):
+async def create_purchase(purchase_request: PurchaseRequest, api_key: str = Depends(verify_api_key)):
     """
     購入処理API
     購入商品リストを受け取り、取引と取引明細を作成する
@@ -232,7 +243,7 @@ async def create_purchase(purchase_request: PurchaseRequest):
         raise HTTPException(status_code=500, detail=f"購入処理中にエラーが発生しました: {str(e)}")
 
 @app.get("/health")
-async def health_check():
+async def health_check(api_key: str = Depends(verify_api_key)):
     """ヘルスチェック用エンドポイント"""
     return {"status": "healthy"}
 
